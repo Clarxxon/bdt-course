@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Primary PostgreSQL
+  postgres-primary:
+    image: postgres:15.7
+    container_name: postgres-primary
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: testdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-primary-data:/var/lib/postgresql/data
+    networks:
+      - postgres-network
+    command: >
+      bash -c "
+        # Запускаем PostgreSQL стандартным способом
+        exec docker-entrypoint.sh postgres 
+          -c max_wal_senders=10 
+          -c wal_level=replica 
+          -c hot_standby=on
+      "
+
+  # Replica PostgreSQL
+  postgres-replica:
+    image: postgres:15.7
+    container_name: postgres-replica
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: testdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-replica-data:/var/lib/postgresql/data
+    networks:
+      - postgres-network
+    depends_on:
+      - postgres-primary
+    command: >
+      bash -c "
+        echo 'Waiting for primary database...'
+        sleep 15
+        until pg_isready -h postgres-primary -p 5432; do
+          sleep 2
+        done
+        
+        echo 'Setting up replica...'
+        rm -rf /var/lib/postgresql/data/*
+        PGPASSWORD=replicator_pass pg_basebackup -h postgres-primary -p 5432 -U replicator -D /var/lib/postgresql/data -Fp -Xs -R
+        
+        echo \"primary_conninfo = 'host=postgres-primary port=5432 user=replicator password=replicator_pass'\" >> /var/lib/postgresql/data/postgresql.auto.conf
+        exec docker-entrypoint.sh postgres
+      "
+
+volumes:
+  postgres-primary-data:
+  postgres-replica-data:
+
+networks:
+  postgres-network:
+    driver: bridge
