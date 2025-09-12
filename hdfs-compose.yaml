@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  namenode:
+    image: apache/hadoop:3.3.6
+    container_name: namenode
+    hostname: namenode
+    ports:
+      - "9870:9870"  # Web UI
+      - "9820:9820"  # Namenode service
+    environment:
+      - HDFS_NAMENODE_OPTS=-Dhadoop.security.logger=INFO,RFAS -Dfs.defaultFS=hdfs://namenode:9820
+    volumes:
+      - namenode-data:/hadoop/dfs/name
+    command: >
+      bash -c "hdfs namenode -format -force &&
+               hdfs --daemon start namenode &&
+               tail -f /dev/null"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9870"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  datanode1:
+    image: apache/hadoop:3.3.6
+    container_name: datanode1
+    hostname: datanode1
+    environment:
+      - HDFS_DATANODE_OPTS=-Dhadoop.security.logger=ERROR,RFAS
+    volumes:
+      - datanode1-data:/hadoop/dfs/data
+    command: >
+      bash -c "hdfs --daemon start datanode &&
+               tail -f /dev/null"
+    depends_on:
+      - namenode
+    healthcheck:
+      test: ["CMD", "jps"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  datanode2:
+    image: apache/hadoop:3.3.6
+    container_name: datanode2
+    hostname: datanode2
+    environment:
+      - HDFS_DATANODE_OPTS=-Dhadoop.security.logger=ERROR,RFAS
+    volumes:
+      - datanode2-data:/hadoop/dfs/data
+    command: >
+      bash -c "hdfs --daemon start datanode &&
+               tail -f /dev/null"
+    depends_on:
+      - namenode
+    healthcheck:
+      test: ["CMD", "jps"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  namenode-data:
+  datanode1-data:
+  datanode2-data:
