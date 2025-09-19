@@ -133,11 +133,18 @@ RDD — это устойчивый распределённый набор да
 
 ```mermaid
 flowchart TD
-    A[HDFS: input.txt] --> B[sc.textFile()]
-    B --> C[flatMap(line -> words)]
-    C --> D[map(word -> (word,1))]
-    D --> E[reduceByKey(a+b)]
-    E --> F[saveAsTextFile(output)]
+    A[HDFS: input.txt]
+    B[sc.textFile()]
+    C[flatMap(line -> words)]
+    D[map(word -> (word,1))]
+    E[reduceByKey(a+b)]
+    F[saveAsTextFile(output)]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
 ```
 
 ⸻
