@@ -131,6 +131,15 @@ RDD — это устойчивый распределённый набор да
 	-	Действия (запускают вычисления, возвращают результат или пишут в HDFS):
 	-	collect(), count(), saveAsTextFile(), reduce(), first().
 
+```mermaid
+flowchart TD
+    A[HDFS: input.txt] --> B[sc.textFile()]
+    B --> C[flatMap(line -> words)]
+    C --> D[map(word -> (word,1))]
+    D --> E[reduceByKey(a+b)]
+    E --> F[saveAsTextFile(output)] 
+```
+
 ⸻
 
 Когда использовать RDD?
