@@ -137,7 +137,7 @@ flowchart TD
     B --> C[flatMap(line -> words)]
     C --> D[map(word -> (word,1))]
     D --> E[reduceByKey(a+b)]
-    E --> F[saveAsTextFile(output)] 
+    E --> F[saveAsTextFile(output)]
 ```
 
 ⸻
