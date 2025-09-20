@@ -1,0 +1,12 @@
+# config/elasticsearch/elasticsearch.yml
+# Настройки для одноднойодной ноды
+cluster.name: "es-docker-cluster"
+network.host: 0.0.0.0
+
+# Настройки безопасности (можно отключить для дев-среды, но не рекомендуется)
+xpack.security.enabled: true
+xpack.security.transport.ssl.enabled: true
+
+# Настройки для упрощения жизни в разработке (НЕ ДЕЛАЙТЕ ЭТОГО В PRODUCTION!)
+# Отключает проверки для single-node кластера
+discovery.type: single-node

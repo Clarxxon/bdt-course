@@ -1,0 +1,63 @@
+version: '3.8'
+services:
+  # Сервис Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: elasticsearch
+    environment:
+      - node.name=es01
+      - cluster.name=es-docker-cluster # Имя кластера
+      - discovery.type=single-node # Режим для одного узла
+      - bootstrap.memory_lock=true
+      - xpack.security.enrollment.enabled=true # Включена система безопасности
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g" # Выделение памяти для Java
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data # Постоянное хранилище для данных
+      - ./config/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml # Кастомный конфиг (опционально)
+    ports:
+      - "9200:9200" # REST API
+      - "9300:9300" # Межнодовое общение
+    networks:
+      - elastic
+
+  # Сервис Kibana - веб-интерфейс для управления и визуализации
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200 # Ссылаемся на сервис elasticsearch
+    ports:
+      - "5601:5601" # Веб-интерфейс Kibana
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+
+# Опционально: Сервис для загрузки демо-данных (удобно для тестирования)
+  elasticsearch-setup:
+    image: curlimages/curl:latest
+    container_name: es_setup
+    command: >
+      /bin/sh -c "
+      echo 'Waiting for Elasticsearch to start...';
+      until curl -s -u elastic:${ELASTIC_PASSWORD} http://elasticsearch:9200 | grep -q 'missing authentication credentials'; do sleep 10; done;
+      echo 'Elasticsearch is up!';
+      "
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD} # Пароль берется из .env файла
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+
+volumes:
+  es_data: # Именованный том для данных Elasticsearch. Данные не пропадут при перезапуске.
+    driver: local
+
+networks:
+  elastic: # Изолированная сеть для общения контейнеров между собой.
+    driver: bridge
