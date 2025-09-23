@@ -53,7 +53,7 @@ services:
     hostname: datanode1
     environment:
       - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-      - HDFS_CONF_dfs.client.use.datanode.hostname=false
+      - HDFS_CONF_dfs__client__use__datanode__hostname=false
     ports:
       - "9864:9864"
     volumes:
@@ -68,7 +68,7 @@ services:
     hostname: datanode2
     environment:
       - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-      - HDFS_CONF_dfs.client.use.datanode.hostname=false
+      - HDFS_CONF_dfs__client__use__datanode__hostname=false
     volumes:
       - datanode2-data:/hadoop/dfs/data
     depends_on:
