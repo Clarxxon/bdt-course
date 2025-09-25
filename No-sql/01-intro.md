@@ -1,6 +1,6 @@
 # NoSQL: MongoDB и Elasticsearch
 
-**Тема:** NoSQL базы данных. Глубокий разбор MongoDB и Elasticsearch, их отличия и преимущества для Big Data.
+NoSQL базы данных. MongoDB и Elasticsearch, их отличия и преимущества для Big Data.
 
 ---
 
