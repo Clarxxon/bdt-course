@@ -6,58 +6,93 @@ services:
     container_name: elasticsearch
     environment:
       - node.name=es01
-      - cluster.name=es-docker-cluster # Имя кластера
-      - discovery.type=single-node # Режим для одного узла
+      - cluster.name=es-docker-cluster
+      - discovery.type=single-node
       - bootstrap.memory_lock=true
-      - xpack.security.enrollment.enabled=true # Включена система безопасности
-      - "ES_JAVA_OPTS=-Xms1g -Xmx1g" # Выделение памяти для Java
+      - xpack.security.enrollment.enabled=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}  # Добавлен пароль по умолчанию
     ulimits:
       memlock:
         soft: -1
         hard: -1
     volumes:
-      - es_data:/usr/share/elasticsearch/data # Постоянное хранилище для данных
-      - ./config/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml # Кастомный конфиг (опционально)
+      - es_data:/usr/share/elasticsearch/data
+      - ./config/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
     ports:
-      - "9200:9200" # REST API
-      - "9300:9300" # Межнодовое общение
+      - "9200:9200"
+      - "9300:9300"
     networks:
       - elastic
+    healthcheck:  # Добавлен healthcheck для лучшего управления зависимостями
+      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD:-changeme} http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Сервис Kibana - веб-интерфейс для управления и визуализации
+  # Сервис Kibana
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.0
     container_name: kibana
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200 # Ссылаемся на сервис elasticsearch
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-changeme}
     ports:
-      - "5601:5601" # Веб-интерфейс Kibana
+      - "5601:5601"
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     networks:
       - elastic
 
-# Опционально: Сервис для загрузки демо-данных (удобно для тестирования)
+  # Сервис для отправки логов (Python)
+  log-sender:
+    build: 
+      context: ./log-sender  # Папка с Dockerfile для Python сервиса
+      dockerfile: Dockerfile
+    container_name: log-sender
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+      - LOG_LEVEL=INFO
+      - SEND_INTERVAL=10  # Интервал отправки логов в секундах
+    volumes:
+      - ./logs:/app/logs  # Монтирование папки с логами (опционально)
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - elastic
+    restart: unless-stopped  # Автоматический перезапуск при падении
+
+  # Опционально: Сервис для загрузки демо-данных
   elasticsearch-setup:
     image: curlimages/curl:latest
     container_name: es_setup
     command: >
       /bin/sh -c "
       echo 'Waiting for Elasticsearch to start...';
-      until curl -s -u elastic:${ELASTIC_PASSWORD} http://elasticsearch:9200 | grep -q 'missing authentication credentials'; do sleep 10; done;
+      until curl -s -u elastic:${ELASTIC_PASSWORD:-changeme} http://elasticsearch:9200 | grep -q 'missing authentication credentials'; do sleep 10; done;
       echo 'Elasticsearch is up!';
+      echo 'Creating test index...';
+      curl -X PUT -u elastic:${ELASTIC_PASSWORD:-changeme} 'http://elasticsearch:9200/test-logs' -H 'Content-Type: application/json' -d '{\"mappings\":{\"properties\":{\"timestamp\":{\"type\":\"date\"},\"level\":{\"type\":\"keyword\"},\"message\":{\"type\":\"text\"}}}}';
+      echo 'Test index created!';
       "
     environment:
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD} # Пароль берется из .env файла
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     networks:
       - elastic
 
 volumes:
-  es_data: # Именованный том для данных Elasticsearch. Данные не пропадут при перезапуске.
+  es_data:
     driver: local
 
 networks:
-  elastic: # Изолированная сеть для общения контейнеров между собой.
+  elastic:
     driver: bridge
