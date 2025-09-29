@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  superset:
+    image: apache/superset:latest
+    container_name: superset
+    restart: unless-stopped
+    environment:
+      - SUPERSET_SECRET_KEY=your-secret-key-here
+      - SUPERSET_DATABASE_HOST=superset_db
+      - SUPERSET_DATABASE_USER=superset
+      - SUPERSET_DATABASE_PASSWORD=superset
+      - SUPERSET_DATABASE_NAME=superset
+      - SUPERSET_DATABASE_PORT=5432
+      - PYTHONPATH=/app/pythonpath
+    volumes:
+      - superset_data:/app/superset_home
+      - ./superset_config.py:/app/pythonpath/superset_config.py
+    ports:
+      - "8088:8088"
+    depends_on:
+      - superset_db
+      - redis
+    command: >
+      sh -c "
+        superset db upgrade &&
+        superset init &&
+        superset run -p 8088 --with-threads --reload --debugger --host=0.0.0.0
+      "
+
+  superset_db:
+    image: postgres:14
+    container_name: superset_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=superset
+      - POSTGRES_PASSWORD=superset
+      - POSTGRES_DB=superset
+    volumes:
+      - superset_db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: superset_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  superset-worker:
+    image: apache/superset:latest
+    container_name: superset_worker
+    restart: unless-stopped
+    environment:
+      - SUPERSET_SECRET_KEY=your-secret-key-here
+      - SUPERSET_DATABASE_HOST=superset_db
+      - SUPERSET_DATABASE_USER=superset
+      - SUPERSET_DATABASE_PASSWORD=superset
+      - SUPERSET_DATABASE_NAME=superset
+      - SUPERSET_DATABASE_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHONPATH=/app/pythonpath
+    volumes:
+      - superset_data:/app/superset_home
+      - ./superset_config.py:/app/pythonpath/superset_config.py
+    depends_on:
+      - superset_db
+      - redis
+    command: ["celery", "worker", "--app=superset.sql_lab:celery_app", "--pool=prefork", "-O", "fair", "-c", "4"]
+
+  superset-beat:
+    image: apache/superset:latest
+    container_name: superset_beat
+    restart: unless-stopped
+    environment:
+      - SUPERSET_SECRET_KEY=your-secret-key-here
+      - SUPERSET_DATABASE_HOST=superset_db
+      - SUPERSET_DATABASE_USER=superset
+      - SUPERSET_DATABASE_PASSWORD=superset
+      - SUPERSET_DATABASE_NAME=superset
+      - SUPERSET_DATABASE_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHONPATH=/app/pythonpath
+    volumes:
+      - superset_data:/app/superset_home
+      - ./superset_config.py:/app/pythonpath/superset_config.py
+    depends_on:
+      - superset_db
+      - redis
+    command: ["celery", "beat", "--app=superset.sql_lab:celery_app"]
+
+volumes:
+  superset_db_data:
+  superset_data:
+  redis_data:
