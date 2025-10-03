@@ -6,7 +6,7 @@ version: '3.8'
 services:
   # ---------- Elasticsearch Nodes ----------
   es01: # Master-eligible + Data + Ingest Node
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    image: elasticsearch:8.11.0
     container_name: es01
     environment:
       - node.name=es01
@@ -34,7 +34,7 @@ services:
       retries: 30
 
   es02: # Master-eligible + Data + Ingest Node
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    image: elasticsearch:8.11.0
     container_name: es02
     environment:
       - node.name=es02
@@ -64,7 +64,7 @@ services:
       retries: 30
 
   es03: # Master-eligible + Data + Ingest Node
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    image: elasticsearch:8.11.0
     container_name: es03
     environment:
       - node.name=es03
@@ -111,7 +111,7 @@ services:
 
   # ---------- Kibana ----------
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.0
+    image: kibana:8.11.0
     container_name: kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://es-lb:9200 # Kibana подключается через балансировщик!
