@@ -133,3 +133,6 @@ docker-compose logs elasticsearch | grep "Password for the elastic"
 Elasticsearch: Откройте в браузере https://localhost:9200 (или http://localhost:9200 если отключили security). Вас попросит ввести логин (elastic) и пароль (тот, что вы получили/установили на шаге 4).
 
 Kibana: Откройте http://localhost:5601. Для входа используйте те же учетные данные (elastic и пароль).
+
+### Обратные индексы 
+https://habr.com/ru/companies/sportmaster_lab/articles/756004/ 

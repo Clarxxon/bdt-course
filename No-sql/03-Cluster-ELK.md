@@ -4,140 +4,46 @@
 version: '3.8'
 
 services:
-  # ---------- Elasticsearch Nodes ----------
-  es01: # Master-eligible + Data + Ingest Node
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: es01
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: elasticsearch
     environment:
-      - node.name=es01
-      - cluster.name=es-docker-cluster
-      - node.roles=master,data,ingest # Эта нода выполняет все роли
-      - discovery.seed_hosts=es02,es03 # Список нод для обнаружения кластера
-      - cluster.initial_master_nodes=es01,es02,es03 # Ноды, которые могут быть при старте кластера
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms2g -Xmx2g" # Выделяем больше памяти
-      - xpack.security.enabled=true
-      - xpack.security.transport.ssl.enabled=true
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD} # Пароль из .env файла
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - action.auto_create_index=".kibana*,.monitoring*,.watches,.triggered_watches,.watcher-history*"
     ulimits:
       memlock:
         soft: -1
         hard: -1
     volumes:
-      - es01_data:/usr/share/elasticsearch/data
-    networks:
-      - elastic
-    healthcheck: # Healthcheck для проверки готовности ноды
-      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200 | grep -q 'cluster_name'"]
-      interval: 10s
-      timeout: 10s
-      retries: 30
-
-  es02: # Master-eligible + Data + Ingest Node
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: es02
-    environment:
-      - node.name=es02
-      - cluster.name=es-docker-cluster
-      - node.roles=master,data,ingest
-      - discovery.seed_hosts=es01,es03
-      - cluster.initial_master_nodes=es01,es02,es03
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
-      - xpack.security.enabled=true
-      - xpack.security.transport.ssl.enabled=true
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    volumes:
-      - es02_data:/usr/share/elasticsearch/data
-    networks:
-      - elastic
-    depends_on:
-      - es01
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200 | grep -q 'cluster_name'"]
-      interval: 10s
-      timeout: 10s
-      retries: 30
-
-  es03: # Master-eligible + Data + Ingest Node
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: es03
-    environment:
-      - node.name=es03
-      - cluster.name=es-docker-cluster
-      - node.roles=master,data,ingest
-      - discovery.seed_hosts=es01,es02
-      - cluster.initial_master_nodes=es01,es02,es03
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
-      - xpack.security.enabled=true
-      - xpack.security.transport.ssl.enabled=true
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    volumes:
-      - es03_data:/usr/share/elasticsearch/data
-    networks:
-      - elastic
-    depends_on:
-      - es02
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200 | grep -q 'cluster_name'"]
-      interval: 10s
-      timeout: 10s
-      retries: 30
-
-  # ---------- Load Balancer / Coordinator ----------
-  # Nginx как координационный узел и балансировщик нагрузки
-  es-lb:
-    image: nginx:alpine
-    container_name: es-lb
-    volumes:
-      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro # Конфиг Nginx
+      - es_data:/usr/share/elasticsearch/data
     ports:
-      - "9200:9200" # Внешний порт для балансировщика
+      - "9200:9200"
     networks:
       - elastic
-    depends_on:
-      - es01
-      - es02
-      - es03
 
-  # ---------- Kibana ----------
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.0
+    image: kibana:8.11.0
     container_name: kibana
     environment:
-      - ELASTICSEARCH_HOSTS=http://es-lb:9200 # Kibana подключается через балансировщик!
-      - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_REQUESTTIMEOUT=120000
     ports:
       - "5601:5601"
     networks:
       - elastic
     depends_on:
-      - es-lb # Ждем поднятия балансировщика
+      - elasticsearch
 
 volumes:
-  es01_data:
-    driver: local
-  es02_data:
-    driver: local
-  es03_data:
+  es_data:
     driver: local
 
 networks:
   elastic:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 10.5.0.0/16 # Фиксируем подсеть для стабильности адресов
 ```
 
 ---
