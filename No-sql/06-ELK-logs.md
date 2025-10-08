@@ -198,7 +198,7 @@ chmod +x setup-filebeat.sh
 
 Или используйте curl для генерации логов:
 ```bash
-# Генерируем запросы к nginx
+# Генерируем запросы к nginx в терминале
 for i in {1..10}; do
   curl http://localhost:8080/test-$i
   sleep 1
