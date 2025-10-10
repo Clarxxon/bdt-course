@@ -26,6 +26,7 @@ services:
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - xpack.security.enabled=false
       - cluster.routing.allocation.disk.threshold_enabled=false
+      - action.auto_create_index=".kibana*,.monitoring*,.watches,.triggered_watches,.watcher-history*"
     ulimits:
       memlock:
         soft: -1
@@ -42,6 +43,7 @@ services:
     container_name: kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_REQUESTTIMEOUT=120000
     ports:
       - "5601:5601"
     networks:
@@ -49,9 +51,9 @@ services:
     depends_on:
       - elasticsearch
 
-  # ---------- Filebeat для сбора логов ----------
+    # ---------- Filebeat для сбора логов ----------
   filebeat:
-    image: docker.elastic.co/beats/filebeat:8.11.0
+    image: elastic/filebeat:8.5.1
     container_name: filebeat
     environment:
       - STRICT_PERMS=false
