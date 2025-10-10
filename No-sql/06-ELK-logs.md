@@ -59,8 +59,8 @@ services:
       - STRICT_PERMS=false
     volumes:
       - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ./1.log:/1.log
+      
     networks:
       - elastic
     depends_on:
@@ -80,6 +80,9 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro # Mount your custom Nginx config
+      - ./logs/nginx:/var/log/nginx # Mount a volume for Nginx logs
 
 volumes:
   es_data:
@@ -96,21 +99,38 @@ networks:
 
 ```yaml
 filebeat.inputs:
-- type: container
-  paths:
-    - '/var/lib/docker/containers/*/*.log'
-  processors:
-    - add_docker_metadata:
-        host: "unix:///var/run/docker.sock"
+  - type: filestream
+    id: my-application-logs # A unique ID for this input
+    paths:
+      - /1.log
+    enabled: true
+    # Optional configurations:
+    # tags: ["application", "production"]
+    # fields:
+    #   environment: "development"
+    #   application_name: "my-app"
+    # exclude_files: ["\\.gz$"] # Exclude gzipped files
+    # ignore_older: 24h # Ignore files older than 24 hours
+    # close_inactive: 5m # Close inactive files after 5 minutes
+    # multiline:
+    #   pattern: '^\[' # Example: lines starting with '[' are part of a multiline event
+    #   negate: true
+    #   match: after
+# - type: container
+#   paths:
+#     - '/var/lib/docker/containers/*/*.log'
+#   processors:
+#     - add_docker_metadata:
+#         host: "unix:///var/run/docker.sock"
 
 # Добавляем поля Docker
-processors:
-  - add_docker_metadata:
-      host: "unix:///var/run/docker.sock"
-  - add_fields:
-      target: ''
-      fields:
-        service: 'docker-logs'
+# processors:
+#   - add_docker_metadata:
+#       host: "unix:///var/run/docker.sock"
+#   - add_fields:
+#       target: ''
+#       fields:
+#         service: 'docker-logs'
 
 # Настройки для парсинга JSON логов
 json.keys_under_root: true
