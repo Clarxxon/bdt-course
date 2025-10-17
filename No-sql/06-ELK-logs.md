@@ -114,46 +114,9 @@ setup.kibana:
 logging.level: info
 ```
 
-## Шаг 3: Инициализация Filebeat
+Далее выполняем  `docker compose up`
 
-Создайте скрипт для настройки Filebeat:
-
-```bash
-#!/bin/bash
-# setup-filebeat.sh
-
-# Останавливаем всё
-docker-compose down
-
-# Запускаем Elasticsearch и Kibana
-docker-compose up -d elasticsearch kibana nginx-test
-
-# Ждем готовности Elasticsearch
-echo "Waiting for Elasticsearch..."
-until curl -s http://localhost:9200/_cluster/health | grep -q '"status":"green"'; do
-  sleep 5
-done
-
-# Создаем директорию для логов Filebeat
-mkdir -p filebeat-data
-
-# Запускаем Filebeat с настройкой
-docker-compose up -d filebeat
-
-# Инициализируем Filebeat в контейнере
-docker exec filebeat filebeat setup -e
-
-echo "Filebeat setup complete!"
-echo "Generate some logs by visiting: http://localhost:8080"
-```
-
-Сделайте скрипт исполняемым и запустите:
-```bash
-chmod +x setup-filebeat.sh
-./setup-filebeat.sh
-```
-
-## Шаг 4: Генерация логов
+## Генерация логов
 
 Откройте в браузере несколько раз: `http://localhost:8080`
 
@@ -166,7 +129,7 @@ for i in {1..10}; do
 done
 ```
 
-## Шаг 5: Настройка Kibana для просмотра логов
+## Настройка Kibana для просмотра логов
 
 ### 1. Создайте data view для логов:
 
