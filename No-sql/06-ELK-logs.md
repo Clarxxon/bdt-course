@@ -19,14 +19,13 @@ version: '3.8'
 
 services:
   elasticsearch:
-    image: elasticsearch:8.11.0
+    image: elasticsearch:8.5.0
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
       - xpack.security.enabled=false
       - cluster.routing.allocation.disk.threshold_enabled=false
-      - action.auto_create_index=".kibana*,.monitoring*,.watches,.triggered_watches,.watcher-history*"
     ulimits:
       memlock:
         soft: -1
@@ -35,54 +34,49 @@ services:
       - es_data:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
-    networks:
-      - elastic
+    networks: [elastic]
 
   kibana:
-    image: kibana:8.11.0
+    image: kibana:8.5.0
     container_name: kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - ELASTICSEARCH_REQUESTTIMEOUT=120000
     ports:
       - "5601:5601"
-    networks:
-      - elastic
-    depends_on:
-      - elasticsearch
+    networks: [elastic]
+    depends_on: [elasticsearch]
 
-    # ---------- Filebeat для сбора логов ----------
   filebeat:
-    image: elastic/filebeat:8.5.1
+    image: elastic/filebeat:8.11.0
     container_name: filebeat
+    user: "0"                       # чтобы точно было право читать файлы
     environment:
       - STRICT_PERMS=false
     volumes:
       - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - ./1.log:/1.log
-      
-    networks:
-      - elastic
-    depends_on:
-      - elasticsearch
+      - ./logs:/logs:ro              # <-- монтируем папку с 1.log
+      # Если не читаем логи контейнеров — эти два монтирования можно убрать:
+      # - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      # - /var/run/docker.sock:/var/run/docker.sock
+    networks: [elastic]
+    depends_on: [elasticsearch]
     restart: unless-stopped
 
-  # ---------- Тестовый контейнер для логов ----------
   nginx-test:
     image: nginx:alpine
     container_name: nginx-test
     ports:
       - "8080:80"
-    networks:
-      - elastic
+    networks: [elastic]
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro # Mount your custom Nginx config
-      - ./logs/nginx:/var/log/nginx # Mount a volume for Nginx logs
+      - ./nginx.conf:/etc/nginx.conf:ro
+      - ./logs/nginx:/var/log/nginx
 
 volumes:
   es_data:
@@ -95,84 +89,29 @@ networks:
 
 ## Шаг 2: Создаем конфигурацию Filebeat
 
++ создаем папку logs и в нее кладем файл с расширением .log
+
 Создайте файл `filebeat.yml`:
 
 ```yaml
 filebeat.inputs:
   - type: filestream
-    id: my-application-logs # A unique ID for this input
-    paths:
-      - /1.log
+    id: from-one-file
     enabled: true
-    # Optional configurations:
-    # tags: ["application", "production"]
-    # fields:
-    #   environment: "development"
-    #   application_name: "my-app"
-    # exclude_files: ["\\.gz$"] # Exclude gzipped files
-    # ignore_older: 24h # Ignore files older than 24 hours
-    # close_inactive: 5m # Close inactive files after 5 minutes
-    # multiline:
-    #   pattern: '^\[' # Example: lines starting with '[' are part of a multiline event
-    #   negate: true
-    #   match: after
-# - type: container
-#   paths:
-#     - '/var/lib/docker/containers/*/*.log'
-#   processors:
-#     - add_docker_metadata:
-#         host: "unix:///var/run/docker.sock"
+    paths:
+      - /logs/1.log           # указываем наш файл с логами
+      - /logs/nginx/error.log # оставляйте только ваши файлы!
+      - /logs/nginx/access.log
 
-# Добавляем поля Docker
-# processors:
-#   - add_docker_metadata:
-#       host: "unix:///var/run/docker.sock"
-#   - add_fields:
-#       target: ''
-#       fields:
-#         service: 'docker-logs'
-
-# Настройки для парсинга JSON логов
-json.keys_under_root: true
-json.overwrite_keys: true
-json.add_error_key: true
-
-# Настройки вывода в Elasticsearch
 output.elasticsearch:
   hosts: ["http://elasticsearch:9200"]
-  indices:
-    - index: "filebeat-docker-%{+yyyy.MM.dd}"
-      when.equals:
-        service: "docker-logs"
+  # Оставляем ILM по умолчанию: индексы будут вида filebeat-8.11.0-*
+  # (Самый простой и надежный старт)
 
-# Настройки для Kibana
 setup.kibana:
   host: "kibana:5601"
 
-# Настройки шаблонов индексов
-setup.template:
-  name: "filebeat-docker"
-  pattern: "filebeat-docker-*"
-
-# Включаем модули для Docker
-filebeat.config.modules:
-  path: ${path.config}/modules.d/*.yml
-  reload.enabled: false
-
-# Включаем автоматическое обнаружение
-filebeat.autodiscover:
-  providers:
-    - type: docker
-      hints.enabled: true
-
-# Настройки логирования Filebeat
 logging.level: info
-logging.to_files: true
-logging.files:
-  path: /var/log/filebeat
-  name: filebeat
-  keepfiles: 7
-  permissions: 0644
 ```
 
 ## Шаг 3: Инициализация Filebeat
