@@ -173,35 +173,19 @@ done
 В Kibana перейдите:
 - **Management → Stack Management → Data Views**
 - **Create data view**
-- **Name**: `docker-logs`
-- **Index pattern**: `filebeat-docker-*`
+- **Name**: `filebeat-logs`
+- **Index pattern**: `filebeat-*`
 - **Timestamp field**: `@timestamp`
 - **Create**
 
 ### 2. Просмотр логов в Discover:
 
 - **Analytics → Discover**
-- Выберите data view `docker-logs`
+- Выберите data view `filebeat-logs`
 - Вы увидите логи всех Docker-контейнеров
 
-### 3. Создайте панель для мониторинга логов:
 
-В **Analytics → Dashboard** создайте новую dashboard с визуализациями:
-
-**Визуализация 1**: Количество логов по контейнерам
-- Тип: **Vertical Bar**
-- Ось X: `container.name` (термы)
-- Ось Y: `Count`
-
-**Визуализация 2**: Уровни логов
-- Тип: **Pie chart**
-- Сегменты: `log.level`
-
-**Визуализация 3**: Последние логи
-- Тип: **Data table**
-- Поля: `@timestamp`, `container.name`, `message`
-
-## Шаг 6: Расширенная конфигурация для приложения
+## Расширенная конфигурация для приложения
 
 Если у вас есть свое приложение, добавьте его в docker-compose.yml:
 
@@ -217,14 +201,11 @@ done
       - elasticsearch
 ```
 
-## Шаг 7: Полезные запросы для поиска логов
+## Полезные запросы для поиска логов
 
 В **Discover** используйте KQL (Kibana Query Language):
 
 ```
-# Логи конкретного контейнера
-container.name: "nginx-test"
-
 # Логи с ошибками
 log.level: "error"
 
@@ -235,25 +216,8 @@ message: "GET"
 container.name: "nginx-test" and log.level: "error"
 ```
 
-## Шаг 8: Мониторинг в реальном времени
+## Мониторинг в реальном времени
 
 В **Analytics → Discover**:
 - Нажмите **Auto refresh**
 - Выберите интервал (например, 5 секунд)
-
-## Если Filebeat не работает, проверьте:
-
-1. **Права доступа**:
-```bash
-chmod 644 filebeat.yml
-```
-
-2. **Логи Filebeat**:
-```bash
-docker logs filebeat
-```
-
-3. **Проверьте индексы в Elasticsearch**:
-```bash
-curl http://localhost:9200/_cat/indices?v
-```
