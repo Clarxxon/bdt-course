@@ -357,8 +357,27 @@ scrape_configs:
 
 ### Заключение
 
-[1]: https://prometheus.io/docs/prometheus/latest/getting_started/?utm_source=chatgpt.com "Getting started - Prometheus"
-[2]: https://grafana.com/docs/grafana/latest/fundamentals/?utm_source=chatgpt.com "Introduction | Grafana documentation"
-[3]: https://prometheus.io/docs/visualization/grafana/?utm_source=chatgpt.com "Grafana support for Prometheus"
-[4]: https://prometheus.io/docs/introduction/overview/?utm_source=chatgpt.com "Overview - Prometheus"
-[5]: https://grafana.com/docs/grafana/latest/datasources/prometheus/?utm_source=chatgpt.com "Prometheus data source | Grafana documentation"
+Отлично 👍
+Вот переработанный блок **«Заключение»** — ссылки оформлены в виде обычного списка, чтобы корректно рендерились в любом Markdown-редакторе (GitHub, Obsidian, VS Code, Notion и т.д.):
+
+---
+
+### Заключение
+
+Для самостоятельного изучения и закрепления материала рекомендуется ознакомиться с официальной документацией и дополнительными ресурсами:
+
+* 📘 **Prometheus — Getting Started**
+  [https://prometheus.io/docs/prometheus/latest/getting_started/](https://prometheus.io/docs/prometheus/latest/getting_started/)
+
+* 📗 **Prometheus — Overview (Обзор архитектуры)**
+  [https://prometheus.io/docs/introduction/overview/](https://prometheus.io/docs/introduction/overview/)
+
+* 📘 **Prometheus + Grafana Integration**
+  [https://prometheus.io/docs/visualization/grafana/](https://prometheus.io/docs/visualization/grafana/)
+
+* 📙 **Grafana Labs — Fundamentals (Основы работы и интерфейс)**
+  [https://grafana.com/docs/grafana/latest/fundamentals/](https://grafana.com/docs/grafana/latest/fundamentals/)
+
+* 📒 **Grafana — Prometheus Data Source Setup**
+  [https://grafana.com/docs/grafana/latest/datasources/prometheus/](https://grafana.com/docs/grafana/latest/datasources/prometheus/)
+
