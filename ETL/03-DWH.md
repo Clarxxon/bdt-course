@@ -127,16 +127,8 @@ flowchart TD
 
 ```mermaid
 erDiagram
-    %% Raw Schema
-    raw.stg_users {
-        bigint id PK "Идентификатор записи"
-        jsonb raw_data "Сырые данные"
-        timestamp loaded_at "Время загрузки"
-        varchar source_system "Источник"
-        varchar load_id "Идентификатор загрузки"
-    }
-    
-    raw.stg_orders {
+    %% Raw Schema Entities
+    "raw.stg_users" {
         bigint id PK
         jsonb raw_data
         timestamp loaded_at
@@ -144,7 +136,7 @@ erDiagram
         varchar load_id
     }
     
-    raw.stg_products {
+    "raw.stg_orders" {
         bigint id PK
         jsonb raw_data
         timestamp loaded_at
@@ -152,7 +144,7 @@ erDiagram
         varchar load_id
     }
     
-    raw.stg_payments {
+    "raw.stg_products" {
         bigint id PK
         jsonb raw_data
         timestamp loaded_at
@@ -160,22 +152,30 @@ erDiagram
         varchar load_id
     }
     
-    %% Cleansed Schema - Dimension Tables
-    cleansed.dim_users {
+    "raw.stg_payments" {
+        bigint id PK
+        jsonb raw_data
+        timestamp loaded_at
+        varchar source_system
+        varchar load_id
+    }
+    
+    %% Cleansed Schema Entities
+    "cleansed.dim_users" {
         bigint user_id PK
         varchar email
         varchar full_name
         date date_of_birth
         varchar country
         varchar subscription_tier
-        date valid_from "SCD Type 2"
-        date valid_to "SCD Type 2"
-        boolean is_current "SCD Type 2"
+        date valid_from
+        date valid_to
+        boolean is_current
         timestamp created_at
         timestamp updated_at
     }
     
-    cleansed.dim_products {
+    "cleansed.dim_products" {
         bigint product_id PK
         varchar sku
         varchar product_name
@@ -186,7 +186,7 @@ erDiagram
         timestamp updated_at
     }
     
-    cleansed.dim_dates {
+    "cleansed.dim_dates" {
         date date_id PK
         integer year
         integer quarter
@@ -199,8 +199,7 @@ erDiagram
         boolean is_holiday
     }
     
-    %% Cleansed Schema - Fact Tables
-    cleansed.fact_orders {
+    "cleansed.fact_orders" {
         bigint order_id PK
         bigint user_id FK
         bigint product_id FK
@@ -213,7 +212,7 @@ erDiagram
         timestamp updated_at
     }
     
-    cleansed.fact_payments {
+    "cleansed.fact_payments" {
         bigint payment_id PK
         bigint order_id FK
         date payment_date FK
@@ -224,8 +223,8 @@ erDiagram
         timestamp processed_at
     }
     
-    %% Mart Schema
-    mart.sales_mart {
+    %% Mart Schema Entities
+    "mart.sales_mart" {
         date sale_date PK
         varchar product_category
         varchar user_country
@@ -236,7 +235,7 @@ erDiagram
         decimal revenue_per_customer
     }
     
-    mart.customer_mart {
+    "mart.customer_mart" {
         bigint user_id PK
         date first_order_date
         date last_order_date
@@ -248,16 +247,20 @@ erDiagram
     }
     
     %% Relationships
-    raw.stg_users ||--o{ cleansed.dim_users : "transforms_to"
-    raw.stg_products ||--o{ cleansed.dim_products : "transforms_to"
-    raw.stg_orders ||--o{ cleansed.fact_orders : "transforms_to"
+    "raw.stg_users" ||--o{ "cleansed.dim_users" : "transforms_to"
+    "raw.stg_products" ||--o{ "cleansed.dim_products" : "transforms_to"
+    "raw.stg_orders" ||--o{ "cleansed.fact_orders" : "transforms_to"
+    "raw.stg_payments" ||--o{ "cleansed.fact_payments" : "transforms_to"
     
-    cleansed.dim_users ||--o{ cleansed.fact_orders : "references"
-    cleansed.dim_products ||--o{ cleansed.fact_orders : "references"
-    cleansed.dim_dates ||--o{ cleansed.fact_orders : "references"
+    "cleansed.dim_users" ||--o{ "cleansed.fact_orders" : "references"
+    "cleansed.dim_products" ||--o{ "cleansed.fact_orders" : "references"
+    "cleansed.dim_dates" ||--o{ "cleansed.fact_orders" : "references"
+    "cleansed.dim_dates" ||--o{ "cleansed.fact_payments" : "references"
+    "cleansed.fact_orders" ||--o{ "cleansed.fact_payments" : "references"
     
-    cleansed.fact_orders ||--o{ mart.sales_mart : "aggregates_to"
-    cleansed.dim_users ||--o{ mart.customer_mart : "analyzes_to"
+    "cleansed.fact_orders" ||--o{ "mart.sales_mart" : "aggregates_to"
+    "cleansed.dim_users" ||--o{ "mart.customer_mart" : "analyzes_to"
+    "cleansed.dim_products" ||--o{ "mart.sales_mart" : "categorizes"
 ```
 
 ---
