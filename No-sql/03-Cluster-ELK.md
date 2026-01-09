@@ -4,11 +4,16 @@
 version: '3.8'
 
 services:
-  elasticsearch:
+  es01:
     image: elasticsearch:8.11.0
-    container_name: elasticsearch
+    container_name: es01
+    hostname: es01
     environment:
-      - discovery.type=single-node
+      - node.name=es01
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es02,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - xpack.security.enabled=false
       - cluster.routing.allocation.disk.threshold_enabled=false
@@ -18,27 +23,126 @@ services:
         soft: -1
         hard: -1
     volumes:
-      - es_data:/usr/share/elasticsearch/data
+      - es01_data:/usr/share/elasticsearch/data
+    ports:
+      - "9201:9200"
+    networks:
+      - elastic
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  es02:
+    image: elasticsearch:8.11.0
+    container_name: es02
+    hostname: es02
+    environment:
+      - node.name=es02
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es01,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - action.auto_create_index=".kibana*,.monitoring*,.watches,.triggered_watches,.watcher-history*"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es02_data:/usr/share/elasticsearch/data
+    ports:
+      - "9202:9200"
+    networks:
+      - elastic
+    depends_on:
+      es01:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  es03:
+    image: elasticsearch:8.11.0
+    container_name: es03
+    hostname: es03
+    environment:
+      - node.name=es03
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es01,es02
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - action.auto_create_index=".kibana*,.monitoring*,.watches,.triggered_watches,.watcher-history*"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es03_data:/usr/share/elasticsearch/data
+    ports:
+      - "9203:9200"
+    networks:
+      - elastic
+    depends_on:
+      es01:
+        condition: service_started
+      es02:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Load Balancer
+  es-lb:
+    image: nginx:alpine
+    container_name: es-lb
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
       - "9200:9200"
     networks:
       - elastic
+    depends_on:
+      es01:
+        condition: service_healthy
+      es02:
+        condition: service_healthy
+      es03:
+        condition: service_healthy
 
   kibana:
     image: kibana:8.11.0
     container_name: kibana
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_HOSTS=http://es-lb:9200
       - ELASTICSEARCH_REQUESTTIMEOUT=120000
     ports:
       - "5601:5601"
     networks:
       - elastic
     depends_on:
-      - elasticsearch
+      es-lb:
+        condition: service_started
 
 volumes:
-  es_data:
+  es01_data:
+    driver: local
+  es02_data:
+    driver: local
+  es03_data:
     driver: local
 
 networks:
